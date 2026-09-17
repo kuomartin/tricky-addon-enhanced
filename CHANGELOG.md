@@ -1,5 +1,12 @@
 # Changelog
 
+## v5.53.1-fork (2026-09-17)
+
+### Bug Fixes
+- Support SEC1 format EC private keys (`-----BEGIN EC PRIVATE KEY-----`) in keybox validation.
+- Support ECDSA-SHA256 signature verification over P-384 certificate chains (using `p384::ecdsa` prehash verifier).
+- Ensure unparseable/custom private key formats fall back gracefully to `Skipped` instead of failing the entire keybox verification.
+
 ## v5.53.1 (2026-05-01)
 
 ### Bug Fixes

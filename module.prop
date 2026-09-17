@@ -1,8 +1,8 @@
 id=TA_enhanced
 name=Tricky Addon Enhanced
-version=v5.53.1
+version=v5.53.1-fork
 versionCode=50058
-author=Enginex0
+author=Enginex0, kuomartin
 description=Enhanced TrickyStore addon with dual-source keybox, auto security patch, conflict detection & sleek WebUI
-updateJson=https://raw.githubusercontent.com/Enginex0/tricky-addon-enhanced/main/update.json
+updateJson=https://raw.githubusercontent.com/kuomartin/tricky-addon-enhanced/main/update.json
 banner=banner.png

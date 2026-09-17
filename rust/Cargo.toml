@@ -1,6 +1,6 @@
 [package]
 name = "ta-enhanced"
-version = "5.53.1"
+version = "5.53.1-fork"
 edition = "2021"
 
 [dependencies]

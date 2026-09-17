@@ -58,7 +58,7 @@ if [ "$DO_BUMP" = true ]; then
     CARGO_VER=$(echo "$NEW_VERSION" | sed 's/^v//')
     sed -i "s/^version = \".*\"/version = \"$CARGO_VER\"/" "$REPO_DIR/rust/Cargo.toml"
 
-    RELEASE_URL="https://github.com/Enginex0/tricky-addon-enhanced/releases/download/${NEW_VERSION}/${MODULE_ID}-${NEW_VERSION}.zip"
+    RELEASE_URL="https://github.com/kuomartin/tricky-addon-enhanced/releases/download/${NEW_VERSION}/${MODULE_ID}-${NEW_VERSION}.zip"
     sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" "$UPDATE_JSON"
     sed -i "s/\"versionCode\": [0-9]*/\"versionCode\": $NEW_CODE/" "$UPDATE_JSON"
     sed -i "s|\"zipUrl\": \".*\"|\"zipUrl\": \"$RELEASE_URL\"|" "$UPDATE_JSON"

@@ -1,6 +1,6 @@
 {
-  "version": "v5.53.1",
+  "version": "v5.53.1-fork",
   "versionCode": 50058,
-  "zipUrl": "https://github.com/Enginex0/tricky-addon-enhanced/releases/download/v5.53.1/TA_enhanced-v5.53.1.zip",
-  "changelog": "https://raw.githubusercontent.com/Enginex0/tricky-addon-enhanced/main/CHANGELOG.md"
+  "zipUrl": "https://github.com/kuomartin/tricky-addon-enhanced/releases/download/v5.53.1-fork/TA_enhanced-v5.53.1-fork.zip",
+  "changelog": "https://raw.githubusercontent.com/kuomartin/tricky-addon-enhanced/main/CHANGELOG.md"
 }
