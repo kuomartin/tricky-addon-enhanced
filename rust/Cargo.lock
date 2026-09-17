@@ -1229,6 +1229,7 @@ dependencies = [
  "rcgen",
  "ring",
  "rsa",
+ "sec1",
  "serde",
  "serde_json",
  "toml",
