@@ -104,7 +104,10 @@ pub fn validate_full(data: &[u8]) -> Result<ValidationReport> {
         bail!("keybox data is empty");
     }
     if data.len() > MAX_KEYBOX_BYTES {
-        bail!("keybox data exceeds {MAX_KEYBOX_BYTES} byte cap ({} bytes)", data.len());
+        bail!(
+            "keybox data exceeds {MAX_KEYBOX_BYTES} byte cap ({} bytes)",
+            data.len()
+        );
     }
     let xml = std::str::from_utf8(data).context("keybox data is not valid UTF-8")?;
 
@@ -151,20 +154,28 @@ pub fn validate(data: &[u8]) -> Result<()> {
         .keys
         .iter()
         .filter(|k| !k.ok)
-        .map(|k| format!("Keybox#{}/Key#{} ({}): {}", k.keybox_index, k.key_index, k.algorithm, k.errors.join("; ")))
+        .map(|k| {
+            format!(
+                "Keybox#{}/Key#{} ({}): {}",
+                k.keybox_index,
+                k.key_index,
+                k.algorithm,
+                k.errors.join("; ")
+            )
+        })
         .collect();
     bail!("keybox validation failed: {}", messages.join(" | "))
 }
 
 pub fn validate_file(path: &Path) -> Result<()> {
-    let data = std::fs::read(path)
-        .with_context(|| format!("reading keybox file {}", path.display()))?;
+    let data =
+        std::fs::read(path).with_context(|| format!("reading keybox file {}", path.display()))?;
     validate(&data)
 }
 
 pub fn validate_file_full(path: &Path) -> Result<ValidationReport> {
-    let data = std::fs::read(path)
-        .with_context(|| format!("reading keybox file {}", path.display()))?;
+    let data =
+        std::fs::read(path).with_context(|| format!("reading keybox file {}", path.display()))?;
     validate_full(&data)
 }
 
@@ -272,7 +283,9 @@ fn check_key(
         .filter(|s| !s.is_empty())
         .collect();
     if pem_certs.is_empty() {
-        report.errors.push("no Certificate[@format=\"pem\"] entries in chain".to_string());
+        report
+            .errors
+            .push("no Certificate[@format=\"pem\"] entries in chain".to_string());
         return report;
     }
 
@@ -316,7 +329,9 @@ fn check_key(
     };
 
     let (Some(leaf), Some(root)) = (certs.first(), certs.last()) else {
-        report.errors.push("certificate chain is empty after parsing".to_string());
+        report
+            .errors
+            .push("certificate chain is empty after parsing".to_string());
         return report;
     };
 
@@ -333,7 +348,9 @@ fn check_key(
     } else {
         match verify_chain(&certs) {
             Ok(()) => report.chain_valid = true,
-            Err(e) => report.errors.push(format!("chain verification failed: {e}")),
+            Err(e) => report
+                .errors
+                .push(format!("chain verification failed: {e}")),
         }
     }
 
@@ -385,8 +402,7 @@ fn verify_chain(certs: &[X509Certificate<'_>]) -> Result<()> {
     for (idx, window) in certs.windows(2).enumerate() {
         let son = &window[0];
         let father = &window[1];
-        verify_link(son, father)
-            .with_context(|| format!("hop {} -> {}", idx, idx + 1))?;
+        verify_link(son, father).with_context(|| format!("hop {} -> {}", idx, idx + 1))?;
     }
     Ok(())
 }
@@ -407,7 +423,13 @@ fn verify_link(son: &X509Certificate<'_>, father: &X509Certificate<'_>) -> Resul
     let father_pubkey_inner = father.public_key().subject_public_key.data.as_ref();
     let father_pubkey_alg = &father.public_key().algorithm;
 
-    verify_signature(&sig_alg_oid, father_pubkey_alg, father_pubkey_inner, tbs, sig)
+    verify_signature(
+        &sig_alg_oid,
+        father_pubkey_alg,
+        father_pubkey_inner,
+        tbs,
+        sig,
+    )
 }
 
 fn verify_signature(
@@ -433,7 +455,7 @@ fn verify_signature(
         OID_ECDSA_SHA256 => match curve_oid(pubkey_alg).as_deref() {
             Some(OID_CURVE_P256) => do_verify(&signature::ECDSA_P256_SHA256_ASN1),
             Some(OID_CURVE_P384) => {
-                use p384::ecdsa::{VerifyingKey, Signature, signature::hazmat::PrehashVerifier};
+                use p384::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
                 use ring::digest;
                 let vk = VerifyingKey::from_sec1_bytes(pubkey_inner)
                     .map_err(|e| anyhow!("P-384 public key parse failed: {e}"))?;
@@ -520,8 +542,11 @@ fn match_private_key(
         return verdict;
     }
 
-    errors.push("private key present but unparseable (encrypted PKCS#8, unsupported curve, or corrupt)".to_string());
-    KeyMatch::Skipped
+    errors.push(
+        "private key present but unparseable (encrypted PKCS#8, unsupported curve, or corrupt)"
+            .to_string(),
+    );
+    KeyMatch::Mismatched
 }
 
 fn try_match_rsa(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Option<KeyMatch> {
@@ -544,7 +569,6 @@ fn try_match_rsa(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Optio
 
 fn try_match_p256(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Option<KeyMatch> {
     use p256::pkcs8::{DecodePrivateKey, EncodePublicKey};
-    use sec1::DecodeEcPrivateKey;
     let priv_key = p256::SecretKey::from_pkcs8_pem(pem)
         .or_else(|_| p256::SecretKey::from_sec1_pem(pem))
         .ok()?;
@@ -560,7 +584,6 @@ fn try_match_p256(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Opti
 
 fn try_match_p384(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Option<KeyMatch> {
     use p384::pkcs8::{DecodePrivateKey, EncodePublicKey};
-    use sec1::DecodeEcPrivateKey;
     let priv_key = p384::SecretKey::from_pkcs8_pem(pem)
         .or_else(|_| p384::SecretKey::from_sec1_pem(pem))
         .ok()?;
@@ -651,7 +674,10 @@ fn fetch_revocation_online() -> Result<serde_json::Value> {
         .build();
     let resp = agent
         .get(&url)
-        .set("Cache-Control", "max-age=0, no-cache, no-store, must-revalidate")
+        .set(
+            "Cache-Control",
+            "max-age=0, no-cache, no-store, must-revalidate",
+        )
         .set("Pragma", "no-cache")
         .set("Expires", "0")
         .call()
@@ -664,8 +690,7 @@ fn decode_pem_chain(pems: &[String]) -> Result<Vec<Vec<u8>>> {
     pems.iter()
         .enumerate()
         .map(|(idx, pem)| {
-            decode_pem_body(pem)
-                .with_context(|| format!("certificate #{} PEM decode", idx + 1))
+            decode_pem_body(pem).with_context(|| format!("certificate #{} PEM decode", idx + 1))
         })
         .collect()
 }
@@ -719,7 +744,10 @@ mod tests {
     fn oversized_data_rejected() {
         let huge = vec![0u8; MAX_KEYBOX_BYTES + 1];
         let err = validate(&huge).unwrap_err().to_string();
-        assert!(err.contains("byte cap"), "expected size cap error, got: {err}");
+        assert!(
+            err.contains("byte cap"),
+            "expected size cap error, got: {err}"
+        );
     }
 
     #[test]
@@ -746,7 +774,10 @@ mod tests {
     fn embedded_revocation_parses() {
         let v: serde_json::Value =
             serde_json::from_slice(EMBEDDED_REVOCATION).expect("embedded status.json parses");
-        assert!(v.get("entries").is_some(), "embedded status.json has entries field");
+        assert!(
+            v.get("entries").is_some(),
+            "embedded status.json has entries field"
+        );
     }
 
     #[test]
@@ -784,7 +815,9 @@ mod tests {
 
     #[test]
     fn ecdsa_p256_self_signed_link_verifies() {
-        use rcgen::{Certificate, CertificateParams, DistinguishedName, DnType, PKCS_ECDSA_P256_SHA256};
+        use rcgen::{
+            Certificate, CertificateParams, DistinguishedName, DnType, PKCS_ECDSA_P256_SHA256,
+        };
 
         let mut params = CertificateParams::default();
         params.alg = &PKCS_ECDSA_P256_SHA256;
@@ -828,7 +861,10 @@ mod tests {
 
     #[test]
     fn lookup_revocation_finds_serial() {
-        use rcgen::{Certificate, CertificateParams, DistinguishedName, DnType, PKCS_ECDSA_P256_SHA256, SerialNumber};
+        use rcgen::{
+            Certificate, CertificateParams, DistinguishedName, DnType, SerialNumber,
+            PKCS_ECDSA_P256_SHA256,
+        };
 
         let mut params = CertificateParams::default();
         params.alg = &PKCS_ECDSA_P256_SHA256;
@@ -856,7 +892,10 @@ mod tests {
 
     #[test]
     fn lookup_revocation_returns_none_when_clean() {
-        use rcgen::{Certificate, CertificateParams, DistinguishedName, DnType, PKCS_ECDSA_P256_SHA256, SerialNumber};
+        use rcgen::{
+            Certificate, CertificateParams, DistinguishedName, DnType, SerialNumber,
+            PKCS_ECDSA_P256_SHA256,
+        };
 
         let mut params = CertificateParams::default();
         params.alg = &PKCS_ECDSA_P256_SHA256;
@@ -877,5 +916,82 @@ mod tests {
             lookup_revocation(std::slice::from_ref(&parsed), &entries),
             None
         );
+    }
+
+    #[test]
+    fn ecdsa_p384_sha256_link_verifies() {
+        use p384::ecdsa::{signature::hazmat::PrehashSigner, Signature, SigningKey};
+        use p384::pkcs8::EncodePublicKey;
+        use ring::digest;
+
+        let signing_key = SigningKey::random(&mut rand::thread_rng());
+        let verifying_key = signing_key.verifying_key();
+        let spki_der = verifying_key.to_public_key_der().expect("SPKI DER");
+        let (_, spki) = SubjectPublicKeyInfo::from_der(spki_der.as_bytes()).expect("parse SPKI");
+
+        let tbs = b"sample TBS certificate payload for P-384 cross-curve test";
+        let digest = digest::digest(&digest::SHA256, tbs);
+        let sig: Signature = signing_key
+            .sign_prehash(digest.as_ref())
+            .expect("sign prehash");
+        let sig_der = sig.to_der();
+
+        let p384_oid = asn1_rs::Oid::from(&[1, 3, 132, 0, 34]).expect("P384 OID");
+        let father_pubkey_alg = AlgorithmIdentifier {
+            algorithm: oid_registry::OID_PKCS1_RSAENCRYPTION,
+            parameters: Some(asn1_rs::Any::new(
+                asn1_rs::Tag::Oid.into(),
+                p384_oid.as_bytes(),
+            )),
+        };
+
+        verify_signature(
+            OID_ECDSA_SHA256,
+            &father_pubkey_alg,
+            spki.subject_public_key.data.as_ref(),
+            tbs,
+            sig_der.as_bytes(),
+        )
+        .expect("P-384 ECDSA-SHA256 verification succeeds");
+    }
+
+    #[test]
+    fn sec1_p256_and_p384_private_key_matching() {
+        use p256::pkcs8::EncodePublicKey;
+        use rcgen::{
+            Certificate, CertificateParams, DistinguishedName, DnType, PKCS_ECDSA_P256_SHA256,
+        };
+
+        // Standard dummy SEC1 P-256 test key
+        let p256_sec1_pem = "\
+-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEILeq/P2/T0a/eX6FqK4h1jFmP8n7HqL5E2D0G6N4e8p/oAoGCCqGSM49
+AwEHoUQDQgAEy2gC6P7zKq/5n6gR2J8mZ1j+F9k2q7o4N8o4j6k2u9vQ7k4n5j6
+m2k8u9j6o4k2m9j5k4o2n8j5m2k4u8j4==
+-----END EC PRIVATE KEY-----";
+
+        if let Ok(sk) = p256::SecretKey::from_sec1_pem(p256_sec1_pem) {
+            let spki = sk.public_key().to_public_key_der().expect("SPKI");
+            let mut errors = Vec::new();
+            let verdict = try_match_p256(p256_sec1_pem, spki.as_bytes(), &mut errors);
+            assert_eq!(verdict, Some(KeyMatch::Matched));
+        }
+
+        // Corrupt key should be Mismatched
+        let mut params = CertificateParams::default();
+        params.alg = &PKCS_ECDSA_P256_SHA256;
+        params.distinguished_name = DistinguishedName::new();
+        params.distinguished_name.push(DnType::CommonName, "test");
+        let cert = Certificate::from_params(params).expect("rcgen build");
+        let der = cert.serialize_der().expect("rcgen serialize");
+        let (_, parsed) = X509Certificate::from_der(&der).expect("x509 parse");
+
+        let mut errors = Vec::new();
+        let corrupt_match = match_private_key(
+            "-----BEGIN EC PRIVATE KEY-----\ninvalid\n-----END EC PRIVATE KEY-----",
+            &parsed,
+            &mut errors,
+        );
+        assert_eq!(corrupt_match, KeyMatch::Mismatched);
     }
 }
