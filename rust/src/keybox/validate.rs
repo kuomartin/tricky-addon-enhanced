@@ -432,6 +432,17 @@ fn verify_signature(
         OID_RSA_SHA512 => do_verify(&signature::RSA_PKCS1_2048_8192_SHA512),
         OID_ECDSA_SHA256 => match curve_oid(pubkey_alg).as_deref() {
             Some(OID_CURVE_P256) => do_verify(&signature::ECDSA_P256_SHA256_ASN1),
+            Some(OID_CURVE_P384) => {
+                use p384::ecdsa::{VerifyingKey, Signature, signature::hazmat::PrehashVerifier};
+                use ring::digest;
+                let vk = VerifyingKey::from_sec1_bytes(pubkey_inner)
+                    .map_err(|e| anyhow!("P-384 public key parse failed: {e}"))?;
+                let sig = Signature::from_der(sig)
+                    .map_err(|e| anyhow!("P-384 DER signature parse failed: {e}"))?;
+                let digest = digest::digest(&digest::SHA256, tbs);
+                vk.verify_prehash(digest.as_ref(), &sig)
+                    .map_err(|e| anyhow!("P-384 ECDSA-SHA256 verification failed: {e}"))
+            }
             Some(other) => bail!("ECDSA-SHA256 with unsupported curve OID {other}"),
             None => bail!("ECDSA-SHA256 missing curve OID"),
         },
@@ -510,7 +521,7 @@ fn match_private_key(
     }
 
     errors.push("private key present but unparseable (encrypted PKCS#8, unsupported curve, or corrupt)".to_string());
-    KeyMatch::Mismatched
+    KeyMatch::Skipped
 }
 
 fn try_match_rsa(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Option<KeyMatch> {
@@ -533,7 +544,10 @@ fn try_match_rsa(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Optio
 
 fn try_match_p256(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Option<KeyMatch> {
     use p256::pkcs8::{DecodePrivateKey, EncodePublicKey};
-    let priv_key = p256::SecretKey::from_pkcs8_pem(pem).ok()?;
+    use sec1::DecodeEcPrivateKey;
+    let priv_key = p256::SecretKey::from_pkcs8_pem(pem)
+        .or_else(|_| p256::SecretKey::from_sec1_pem(pem))
+        .ok()?;
     let pub_key = priv_key.public_key();
     match pub_key.to_public_key_der() {
         Ok(der) => Some(verdict(der.as_bytes(), leaf_spki)),
@@ -546,7 +560,10 @@ fn try_match_p256(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Opti
 
 fn try_match_p384(pem: &str, leaf_spki: &[u8], errors: &mut Vec<String>) -> Option<KeyMatch> {
     use p384::pkcs8::{DecodePrivateKey, EncodePublicKey};
-    let priv_key = p384::SecretKey::from_pkcs8_pem(pem).ok()?;
+    use sec1::DecodeEcPrivateKey;
+    let priv_key = p384::SecretKey::from_pkcs8_pem(pem)
+        .or_else(|_| p384::SecretKey::from_sec1_pem(pem))
+        .ok()?;
     let pub_key = priv_key.public_key();
     match pub_key.to_public_key_der() {
         Ok(der) => Some(verdict(der.as_bytes(), leaf_spki)),

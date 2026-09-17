@@ -22,6 +22,7 @@ rcgen = { version = "0.12", default-features = false, features = ["pem", "ring"]
 rsa = { version = "0.9", default-features = false, features = ["std", "pem"] }
 p256 = { version = "= 0.13.2", default-features = false, features = ["std", "pem", "pkcs8", "ecdsa"] }
 p384 = { version = "= 0.13.1", default-features = false, features = ["std", "pem", "pkcs8", "ecdsa"] }
+sec1 = { version = "0.7", default-features = false, features = ["der", "pem"] }
 rand = "0.8"
 
 [profile.dev]
